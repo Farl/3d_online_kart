@@ -7,6 +7,8 @@ import { createCar, createCarVisual } from './car.js';
 import { InputController } from './controls.js';
 import { createLapSystem } from './lapSystem.js';
 import { createCameraController } from './cameraController.js';
+import { WebsimSocket } from 'websim-socket';
+import { PARTYKIT_HOST } from './env.js';
 
 const app = document.getElementById('app');
 
@@ -846,7 +848,10 @@ async function initMultiplayer() {
   initializingMultiplayer = true;
 
   if (!room) {
-    room = new WebsimSocket();
+    room = new WebsimSocket({
+      host: PARTYKIT_HOST,
+      room: 'kart-lobby'
+    });
   }
 
   if (mpJoinBtn) {
