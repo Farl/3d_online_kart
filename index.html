@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>3D Physics Racing</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      height: 100%;
+      background: #101010;
+      touch-action: none;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+    #app {
+      width: 100vw;
+      height: 100vh;
+      position: relative;
+      overflow: hidden;
+    }
+    canvas {
+      display: block;
+    }
+    #joystick-zone {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      touch-action: none;
+    }
+    #ui {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      left: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      align-items: flex-end;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 16px;
+      color: #f3f3f3;
+      pointer-events: auto;
+      z-index: 10;
+    }
+    #current-rank {
+      position: absolute;
+      top: 8px;
+      left: 8px;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 42px;
+      font-weight: 800;
+      color: #ffffff;
+      text-shadow: 0 0 14px rgba(0, 0, 0, 0.85);
+      z-index: 15;
+      pointer-events: none;
+    }
+    .hud-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      min-width: 170px;
+      padding: 0;
+      border-radius: 0;
+      background: transparent;
+      backdrop-filter: none;
+      box-shadow: none;
+    }
+    .hud-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: baseline;
+    }
+    .hud-label {
+      font-size: 15px;
+      font-weight: 500;
+      opacity: 0.9;
+      text-shadow: 0 0 8px rgba(0, 0, 0, 0.85);
+    }
+    .hud-value-small {
+      font-size: 18px;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      font-feature-settings: "tnum" 1;
+      text-shadow: 0 0 8px rgba(0, 0, 0, 0.85);
+    }
+    .hud-value-large {
+      font-size: 24px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      font-feature-settings: "tnum" 1;
+      text-shadow: 0 0 10px rgba(0, 0, 0, 0.85);
+    }
+    #ranking-container {
+      position: absolute;
+      right: 8px;
+      bottom: 8px;
+      text-align: right;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 14px;
+      color: #f3f3f3;
+      z-index: 10;
+      pointer-events: none;
+    }
+    #ranking {
+      font-size: 16px;
+      line-height: 1.3;
+      white-space: pre-line;
+      max-width: 220px;
+      text-align: right;
+      text-shadow: 0 0 8px rgba(0, 0, 0, 0.85);
+    }
+    .ranking-title {
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      opacity: 0.8;
+      margin-bottom: 4px;
+      text-shadow: 0 0 8px rgba(0, 0, 0, 0.85);
+    }
+    #countdown-overlay {
+      position: absolute;
+      top: 10%;
+      left: 50%;
+      transform: translateX(-50%);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 42px;
+      font-weight: 800;
+      color: #ffffff;
+      text-shadow: 0 0 18px rgba(0, 0, 0, 0.9);
+      pointer-events: none;
+      z-index: 20;
+      text-align: center;
+      padding: 4px 10px;
+    }
+
+    #mp-join-btn {
+      margin-top: 4px;
+      align-self: flex-end;
+      padding: 6px 10px;
+      border: 1px solid rgba(255, 255, 255, 0.4);
+      border-radius: 999px;
+      background: rgba(0, 0, 0, 0.4);
+      color: #f3f3f3;
+      font-size: 13px;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      cursor: pointer;
+      outline: none;
+      backdrop-filter: blur(4px);
+    }
+
+    #mp-join-btn:disabled {
+      opacity: 0.6;
+      cursor: default;
+    }
+
+    #mp-join-btn.connected {
+      border-color: rgba(0, 255, 170, 0.7);
+      color: #aaffdd;
+    }
+
+    #mp-modal {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: radial-gradient(circle at center, rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.85));
+      z-index: 30;
+      pointer-events: auto;
+    }
+
+    .mp-dialog {
+      max-width: 280px;
+      width: 82%;
+      padding: 18px 20px 16px;
+      border-radius: 22px;
+      background: radial-gradient(circle at top left, rgba(255, 255, 255, 0.16), rgba(40, 40, 40, 0.85));
+      border: 1px solid rgba(255, 255, 255, 0.35);
+      box-shadow:
+        0 18px 60px rgba(0, 0, 0, 0.85),
+        0 0 0 1px rgba(255, 255, 255, 0.04);
+      backdrop-filter: blur(26px) saturate(1.3);
+      -webkit-backdrop-filter: blur(26px) saturate(1.3);
+      color: #f5f5f5;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      text-align: left;
+    }
+
+    .mp-title {
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .mp-text {
+      font-size: 13px;
+      line-height: 1.4;
+      opacity: 0.9;
+      margin-bottom: 10px;
+    }
+
+    .mp-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+
+    .mp-button {
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: none;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      outline: none;
+    }
+
+    .mp-button-secondary {
+      background: transparent;
+      color: #d0d0d0;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+
+    .mp-button-primary {
+      background: #00c28a;
+      color: #081611;
+    }
+
+    #lap-time {
+      text-shadow: 0 0 10px rgba(0, 0, 0, 0.85);
+    }
+
+    #lap-count {
+      text-shadow: 0 0 8px rgba(0, 0, 0, 0.85);
+    }
+
+    #color-picker {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      align-items: flex-end;
+    }
+
+    .color-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .color-row input[type="color"] {
+      width: 32px;
+      height: 24px;
+      padding: 0;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+    }
+  </style>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://esm.sh/three@0.161.0",
+        "three/addons/": "https://esm.sh/three@0.161.0/examples/jsm/",
+        "cannon-es": "https://esm.sh/cannon-es@0.20.0",
+        "nipplejs": "https://esm.sh/nipplejs@0.10.1"
+      }
+    }
+  </script>
+</head>
+<body>
+  <div id="app">
+    <div id="joystick-zone"></div>
+    <div id="current-rank"></div>
+    <div id="ui">
+      <div class="hud-panel">
+        <div class="hud-row">
+          <span class="hud-label">Lap</span>
+          <span id="lap-count" class="hud-value-small">1</span>
+        </div>
+        <div class="hud-row">
+          <span class="hud-label">Lap time</span>
+          <span id="lap-time" class="hud-value-large">00:00.00</span>
+        </div>
+      </div>
+      <div id="color-picker">
+        <div class="color-row">
+          <span class="hud-label">Body</span>
+          <input id="body-color" type="color" value="#1f7aff" />
+        </div>
+        <div class="color-row">
+          <span class="hud-label">Window</span>
+          <input id="glass-color" type="color" value="#181818" />
+        </div>
+      </div>
+      <button id="mp-join-btn" type="button">Join Online</button>
+    </div>
+    <div id="ranking-container">
+      <div class="ranking-title">Ranking</div>
+      <div id="ranking"></div>
+    </div>
+    <div id="countdown-overlay"></div>
+    <div id="mp-modal">
+      <div class="mp-dialog">
+        <div class="mp-title">Race online?</div>
+        <div class="mp-text">
+          Join multiplayer to see other players on the track and compare lap times. You can also join later from the Online button.
+        </div>
+        <div class="mp-actions">
+          <button id="mp-join-skip" class="mp-button mp-button-secondary" type="button">Skip</button>
+          <button id="mp-join-confirm" class="mp-button mp-button-primary" type="button">Join</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="main.js"></script>
+</body>
+</html>
