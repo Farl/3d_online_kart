@@ -23,8 +23,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Generate env.js
-        run: PARTYKIT_HOST="${{ vars.PARTYKIT_HOST }}" ./setup-env.sh
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Generate multiplayer configuration
+        env:
+          PARTYSERVER_HOST: ${{ vars.PARTYSERVER_HOST }}
+        run: node scripts/prepare-env.mjs
 
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
